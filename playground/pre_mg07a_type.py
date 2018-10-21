@@ -1,5 +1,12 @@
 '''
+A Type-and-Identity-Based Proxy Re-encryptionScheme and Its Application in Healthcare
+
+| From: Luan Ibraimi, Qiang Tang, Pieter Hartel, and Willem Jonker
+
+Based on:
 Identity-Based Proxy Re-Encryption
+
+https://github.com/nikosft/IB-PRE/blob/master/pre_mg07a.py
 
 | From: "M. Green, G. Ateniese Identity-Based Proxy Re-Encryption", Section 4.1.
 | Published in: Applied Cryptography and Network Security. Springer Berlin/Heidelberg, 2007
@@ -11,6 +18,7 @@ Identity-Based Proxy Re-Encryption
 :Authors:    N. Fotiou
 :Date:       7/2016
 '''
+
 from charm.toolbox.pairinggroup import pc_element, ZR, G1, G2, GT, pair
 from charm.toolbox.hash_module import Hash
 from charm.adapters.pkenc_adapt_hybrid import HybridEnc
