@@ -13,14 +13,14 @@ Identity-Based Proxy Re-Encryption
 :Authors:    N. Fotiou
 :Date:       7/2016
 '''
-from charm.toolbox.pairinggroup import pc_element,ZR,G1,G2,GT,pair
-from charm.core.math.integer import integer,bitsize, int2Bytes, randomBits
+from charm.toolbox.pairinggroup import pc_element, ZR, G1, G2, GT, pair
 from charm.toolbox.hash_module import Hash
-from charm.core.engine.util import objectToBytes, bytesToObject
 from charm.adapters.pkenc_adapt_hybrid import HybridEnc
-
+from charm.core.engine.util import objectToBytes, bytesToObject
 
 debug = False
+
+
 class PreGA:
     """
 	>>>  from charm.toolbox.pairinggroup import PairingGroup,GT
@@ -42,29 +42,30 @@ class PreGA:
 	>>>  ciphertext2 = pre.reEncryptPKenc(params, re_encryption_key, ciphertext)
 	>>>  pre.decryptPKenc(params,public_key, secret_key, ciphertext2)
     """
-    def __init__(self, groupObj, pkencObj = None):
-        global group,h, pkenc
+
+    def __init__(self, groupObj, pkencObj=None):
+        global group, h, pkenc
         group = groupObj
-        h = Hash('sha1', group)
-        if pkencObj != None:
-            pkenc = HybridEnc(pkencObj)
+        h = Hash(group)
+        if pkencObj is not None:
+            pkenc = HybridEnc(pkencObj, msg_len=20)
 
     def setup(self):
         s = group.random(ZR)
-        g =  group.random(G1)
-        msk = { 's':s }
-        params = { 'g':g, 'g_s':g**s}
-        if(debug):
+        g = group.random(G1)
+        msk = {'s': s}
+        params = {'g': g, 'g_s': g ** s}
+        if (debug):
             print("Public parameters...")
             group.debug(params)
             print("Master secret key...")
             group.debug(msk)
-        return (msk, params)
+        return msk, params
 
     def keyGen(self, msk, ID):
-        k = group.hash(ID,G1) ** msk['s']
-        skid = { 'skid':k }
-        if(debug):
+        k = group.hash(ID, G1) ** msk['s']
+        skid = {'skid': k}
+        if (debug):
             print("Key for id => '%s'" % ID)
             group.debug(skid)
         return skid
@@ -72,9 +73,9 @@ class PreGA:
     def encrypt(self, params, ID, m):
         r = h.group.random(ZR)
         C1 = params['g'] ** r
-        C2 = m *(pair(params['g_s'],group.hash(ID, G1)) ** r)
-        ciphertext = {'C1':C1, 'C2':C2}
-        if(debug):
+        C2 = m * (pair(params['g_s'], group.hash(ID, G1)) ** r)
+        ciphertext = {'C1': C1, 'C2': C2}
+        if debug:
             print('m=>')
             print(m)
             print('ciphertext => ')
@@ -82,12 +83,12 @@ class PreGA:
         return ciphertext
 
     def decrypt(self, params, skid, cid):
-        if len(cid) == 2: # first level ciphertext
-            m = cid['C2']/pair(cid['C1'],skid['skid'])
-        if len(cid) == 4: # second level ciphertext
-            x = self.decrypt(params, skid,{'C1':cid['C3'], 'C2':cid['C4']})
-            m = cid['C2']/pair(cid['C1'],group.hash(x,G1))
-        if(debug):
+        if len(cid) == 2:  # first level ciphertext
+            m = cid['C2'] / pair(cid['C1'], skid['skid'])
+        if len(cid) == 4:  # second level ciphertext
+            x = self.decrypt(params, skid, {'C1': cid['C3'], 'C2': cid['C4']})
+            m = cid['C2'] / pair(cid['C1'], group.hash(x, G1))
+        if debug:
             print('\nDecrypting...')
             print('m=>')
             print(m)
@@ -96,32 +97,36 @@ class PreGA:
     def rkGen(self, params, skid, ID2):
         X = group.random(GT)
         enc = self.encrypt(params, ID2, X)
-        rk = {'R1':enc['C1'], 'R2':enc['C2'], 'R3':(1/(skid['skid']))*group.hash(X,G1)}
-        if(debug):
-            print("\nRe-encryption key  =>" )
+        rk = {'R1': enc['C1'],
+              'R2': enc['C2'],
+              'R3': (1 / (skid['skid'])) * group.hash(X, G1)}
+        if (debug):
+            print("\nRe-encryption key  =>")
             print(rk)
-        return  rk
+        return rk
 
     def reEncrypt(self, params, rk, cid):
-        ciphertext = {'C1':cid['C1'], 'C2':cid['C2']*pair(cid['C1'],rk['R3']), 'C3':rk['R1'], 'C4':rk['R2']}
-        if(debug):
+        ciphertext = {'C1': cid['C1'],
+                      'C2': cid['C2'] * pair(cid['C1'], rk['R3']),
+                      'C3': rk['R1'], 'C4': rk['R2']}
+        if debug:
             print('ciphertext => ')
             print(ciphertext)
         return ciphertext
 
     def rkGenPKenc(self, params, skid, public_key):
         X = group.random(GT)
-        Xbytes = objectToBytes( X, group)
+        Xbytes = objectToBytes(X, group)
         enc = pkenc.encrypt(public_key, Xbytes)
-        rk = {'R1':enc,  'R2':(1/(skid['skid']))*group.hash(X,G1)}
-        if(debug):
-            print("\nRe-encryption key  =>" )
+        rk = {'R1': enc, 'R2': (1 / (skid['skid'])) * group.hash(X, G1)}
+        if debug:
+            print("\nRe-encryption key  =>")
             print(rk)
-        return  rk
+        return rk
 
     def reEncryptPKenc(self, params, rk, cid):
-        ciphertext = {'C1':cid['C1'], 'C2':cid['C2']*pair(cid['C1'],rk['R2']), 'C3':rk['R1']}
-        if(debug):
+        ciphertext = {'C1': cid['C1'], 'C2': cid['C2'] * pair(cid['C1'], rk['R2']), 'C3': rk['R1']}
+        if debug:
             print('ciphertext => ')
             print(ciphertext)
         return ciphertext
@@ -129,10 +134,9 @@ class PreGA:
     def decryptPKenc(self, params, public_key, secret_key, cid):
         Xbytes = pkenc.decrypt(public_key, secret_key, cid['C3'])
         X = bytesToObject(Xbytes, group)
-        m = cid['C2']/pair(cid['C1'],group.hash(X,G1))
-        if(debug):
+        m = cid['C2'] / pair(cid['C1'], group.hash(X, G1))
+        if debug:
             print('\nDecrypting...')
             print('m=>')
             print(m)
         return m
-
