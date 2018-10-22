@@ -155,7 +155,7 @@ if __name__ == '__main__':
     print('Message: {}'.format(msg))
 
     symcrypto_key = group.random(GT)
-    print(symcrypto_key)
+    print('Symmetric key that is going to be encrypted: {}'.format(symcrypto_key))
     symcrypto = SymmetricCryptoAbstraction(extract_key(symcrypto_key))
     bytest_text = symcrypto.encrypt(msg)
 
@@ -167,6 +167,11 @@ if __name__ == '__main__':
 
     # Run by delegator (id_name_1)
     ciphertext = pre.encrypt(params, ID1, symcrypto_key)
+    print('Ciphertext: {}'.format(ciphertext))
+
+    # Directly decrypt ciphertext by the same party
+    plain = pre.decrypt(params, id1_secret_key, ciphertext)
+    print('Symmetric key directly decrypted by party 1: {}'.format(symcrypto_key))
 
     # Run by delegator (id_name_1) create reencryption key for ID2, used by the proxy
     re_encryption_key = pre.rkGen(params, id1_secret_key, ID2)
