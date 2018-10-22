@@ -90,10 +90,10 @@ class PreGA:
         return ciphertext
 
     def decrypt(self, params, skid, cid, t):
-        if len(cid) == 2:  # first level ciphertext
+        if len(cid) == 3:  # first level ciphertext
             m = cid['C2'] / (pair(cid['C1'], skid['skid']) ** h.hashToZr(skid['skid'], t))
         if len(cid) == 4:  # second level ciphertext
-            x = self.decrypt(params, skid, {'C1': cid['C3'], 'C2': cid['C4']}, t)
+            x = self.decrypt(params, skid, {'C1': cid['C3'], 'C2': cid['C4'], 'C3': t}, t)
             m = cid['C2'] / pair(cid['C1'], group.hash(x, G1))
         if debug:
             print('\nDecrypting...')
@@ -171,7 +171,7 @@ if __name__ == '__main__':
     print('Message: {}'.format(msg))
 
     symcrypto_key = group.random(GT)
-    print(symcrypto_key)
+    print('Symmetric key that is going to be encrypted: {}'.format(symcrypto_key))
     symcrypto = SymmetricCryptoAbstraction(extract_key(symcrypto_key))
     bytest_text = symcrypto.encrypt(msg)
 
@@ -183,9 +183,11 @@ if __name__ == '__main__':
 
     # Run by delegator (id_name_1)
     ciphertext = pre.encrypt(params, ID1, symcrypto_key, id1_secret_key, type_attribute)
+    print('Ciphertext: {}'.format(ciphertext))
 
-    print('id1_secret: ')
-    print(id1_secret_key)
+    # Directly decrypt ciphertext by the same party
+    plain = pre.decrypt(params, id1_secret_key, ciphertext, type_attribute)
+    print('Symmetric key directly decrypted by party 1: {}'.format(symcrypto_key))
 
     # Run by delegator (id_name_1) create reencryption key for ID2, used by the proxy
     re_encryption_key = pre.rkGen(params, id1_secret_key, ID2, type_attribute)
@@ -195,7 +197,7 @@ if __name__ == '__main__':
 
     # Run by the delegatee (id_name_2)
     symcrypto_key_decrypted = pre.decrypt(params, id2_secret_key, ciphertext2, type_attribute)
-    print(symcrypto_key_decrypted)
+    print('Symmetric key directly decrypted by party 2: {}'.format(symcrypto_key_decrypted))
 
     symcrypto = SymmetricCryptoAbstraction(extract_key(symcrypto_key_decrypted))
     decrypted_ct = symcrypto.decrypt(bytest_text)
