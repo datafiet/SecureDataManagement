@@ -25,7 +25,7 @@ from charm.adapters.pkenc_adapt_hybrid import HybridEnc
 from charm.core.engine.util import objectToBytes, bytesToObject
 
 debug = False
-
+from pprint import pprint
 
 class PreGA:
     """
@@ -61,7 +61,7 @@ class PreGA:
         g = group.random(G1)
         msk = {'s': s}
         params = {'g': g, 'g_s': g ** s}
-        if (debug):
+        if debug:
             print("Public parameters...")
             group.debug(params)
             print("Master secret key...")
@@ -71,7 +71,7 @@ class PreGA:
     def keyGen(self, msk, ID):
         k = group.hash(ID, G1) ** msk['s']
         skid = {'skid': k}
-        if (debug):
+        if debug:
             print("Key for id => '%s'" % ID)
             group.debug(skid)
         return skid
@@ -86,62 +86,64 @@ class PreGA:
             print('m=>')
             print(m)
             print('ciphertext => ')
-            print(ciphertext)
+            pprint(ciphertext)
         return ciphertext
 
-    def decrypt(self, params, skid, cid, t):
+    def decrypt(self, params, skid, cid):
         if len(cid) == 3:  # first level ciphertext
-            m = cid['C2'] / (pair(cid['C1'], skid['skid']) ** h.hashToZr(skid['skid'], t))
-        if len(cid) == 4:  # second level ciphertext
-            x = self.decrypt(params, skid, {'C1': cid['C3'], 'C2': cid['C4'], 'C3': t}, t)
+            m = cid['C2'] / (pair(cid['C1'], skid['skid']) ** h.hashToZr(skid['skid'],  cid['C3']))
+        if len(cid) == 5:  # second level ciphertext
+            x = self.decrypt(params, skid, {'C1': cid['C3'], 'C2': cid['C4'], 'C3': cid['C5']})
             m = cid['C2'] / pair(cid['C1'], group.hash(x, G1))
         if debug:
             print('\nDecrypting...')
             print('m=>')
-            print(m)
+            pprint(m)
         return m
 
     def rkGen(self, params, skid, ID2, t):
-        X = group.random(GT)
-        enc = self.encrypt(params, ID2, X, skid, t)
+        x = group.random(GT)
+        enc = self.encrypt(params, ID2, x, skid, t)
 
-        rk = {'R1': enc['C1'],
-              'R2': enc['C2'],
-              'R3': (skid['skid'] ** (-h.hashToZr(skid['skid'], t))) * group.hash(X, G1),
-              'R4': group.hash(X, G1)}
+        rk = {'R1': enc['C1'],  # g**r
+              'R2': enc['C2'],  # Encrypt2(X, idj)
+              'R3': skid['skid'] ** (-h.hashToZr(skid['skid'], t)) * group.hash(x, G1),
+              'R4': t}  # type
         if debug:
             print("\nRe-encryption key  =>")
-            print(rk)
+            pprint(rk)
         return rk
 
     def reEncrypt(self, params, rk, cid):
-        """
-        Looks like there is a mistake in the paper, sk_id_i, the proxy has the secret id from id_i?
-        """
-        ciphertext = {'C1': cid['C1'],
-                      'C2': cid['C2'] * pair(cid['C1'],
-                                             (rk['R3'] ** (-h.hashToZr(rk['R3'], cid['C3']))) * rk['R4']),
-                      'C3': rk['R1'],
-                      'C4': rk['R2']}
+        ciphertext = {'C1': cid['C1'],  # g**r
+                      'C2': cid['C2'] * pair(cid['C1'], rk['R3']),
+                      'C3': rk['R1'],  # g**r level 2
+                      'C4': rk['R2'],  # Encrypt2(X, idj)
+                      'C5': rk['R4']}  # type
         if debug:
             print('ciphertext => ')
-            print(ciphertext)
+            pprint(ciphertext)
         return ciphertext
 
-    def rkGenPKenc(self, params, skid, public_key):
+    """
+    Below is public key encryption
+    """
+    def rkGenPKenc(self, params, skid, public_key, t):
         X = group.random(GT)
         Xbytes = objectToBytes(X, group)
         enc = pkenc.encrypt(public_key, Xbytes)
         rk = {'R1': enc,
-              'R2': (1 / (skid['skid'])) * group.hash(X, G1)}
-        if (debug):
+              'R2': skid['skid'] ** (-h.hashToZr(skid['skid'], t)) * group.hash(X, G1)}
+        if debug:
             print("\nRe-encryption key  =>")
             print(rk)
         return rk
 
     def reEncryptPKenc(self, params, rk, cid):
-        ciphertext = {'C1': cid['C1'], 'C2': cid['C2'] * pair(cid['C1'], rk['R2']), 'C3': rk['R1']}
-        if (debug):
+        ciphertext = {'C1': cid['C1'],
+                      'C2': cid['C2'] * pair(cid['C1'], rk['R2']),
+                      'C3': rk['R1']}
+        if debug:
             print('ciphertext => ')
             print(ciphertext)
         return ciphertext
@@ -150,7 +152,7 @@ class PreGA:
         Xbytes = pkenc.decrypt(public_key, secret_key, cid['C3'])
         X = bytesToObject(Xbytes, group)
         m = cid['C2'] / pair(cid['C1'], group.hash(X, G1))
-        if (debug):
+        if debug:
             print('\nDecrypting...')
             print('m=>')
             print(m)
@@ -167,11 +169,14 @@ if __name__ == '__main__':
     ID2 = "id_name_2"
     msg = b'Message to encrypt'
     type_attribute = group.random(ZR)
+    symcrypto_key = group.random(GT)
+    print('Symmetric key before encryption: {}'.format(symcrypto_key))
 
     print('Message: {}'.format(msg))
 
-    symcrypto_key = group.random(GT)
-    print('Symmetric key that is going to be encrypted: {}'.format(symcrypto_key))
+    """
+    "" Symmetric key, keys need to be handed out by party having the master key
+    """
     symcrypto = SymmetricCryptoAbstraction(extract_key(symcrypto_key))
     bytest_text = symcrypto.encrypt(msg)
 
@@ -186,7 +191,7 @@ if __name__ == '__main__':
     print('Ciphertext: {}'.format(ciphertext))
 
     # Directly decrypt ciphertext by the same party
-    plain = pre.decrypt(params, id1_secret_key, ciphertext, type_attribute)
+    plain = pre.decrypt(params, id1_secret_key, ciphertext)
     print('Symmetric key directly decrypted by party 1: {}'.format(symcrypto_key))
 
     # Run by delegator (id_name_1) create reencryption key for ID2, used by the proxy
@@ -196,14 +201,40 @@ if __name__ == '__main__':
     ciphertext2 = pre.reEncrypt(params, re_encryption_key, ciphertext)
 
     # Run by the delegatee (id_name_2)
-    symcrypto_key_decrypted = pre.decrypt(params, id2_secret_key, ciphertext2, type_attribute)
-    print('Symmetric key directly decrypted by party 2: {}'.format(symcrypto_key_decrypted))
+    symcrypto_key_decrypted = pre.decrypt(params, id2_secret_key, ciphertext2)
+    print('Symmetric key decrypted by party 2: {}'.format(symcrypto_key_decrypted))
 
     symcrypto = SymmetricCryptoAbstraction(extract_key(symcrypto_key_decrypted))
     decrypted_ct = symcrypto.decrypt(bytest_text)
 
     print('Decrypted: {}'.format(decrypted_ct))
 
+
     """
-    Master secret key is leading, every user key generated by it is able to decrypt messages from the proxy
+    " Public key, solves that the master secret key does not have to generate every ID key
     """
+    from charm.schemes.pkenc.pkenc_cs98 import CS98
+    from charm.toolbox.ecgroup import ECGroup
+    from charm.toolbox.eccurve import prime192v2
+
+    groupcs98 = ECGroup(prime192v2)
+    pkenc = CS98(groupcs98)
+    pre = PreGA(group, pkenc)
+
+    # Can be run by delegator (id_name_1)
+    (master_secret_key, params) = pre.setup()
+    id1_secret_key = pre.keyGen(master_secret_key, ID1)
+
+    # Run by the delegatee (id_name_2)
+    (public_key, secret_key) = pkenc.keygen()  # Publish public key
+
+    # Run by delegator (id_name_1)
+    ciphertext = pre.encrypt(params, ID1, symcrypto_key, id1_secret_key, type_attribute)
+    re_encryption_key = pre.rkGenPKenc(params, id1_secret_key, public_key, type_attribute)
+
+    # Run by the proxy, uses the re encryption key generated by ID1
+    ciphertext2 = pre.reEncryptPKenc(params, re_encryption_key, ciphertext)
+
+    # Run by the delegatee (id_name_2)
+    symcrypto_key_decrypted = pre.decryptPKenc(params, public_key, secret_key, ciphertext2)
+    print('Decrypted symmetric key by party 2: {}'.format(symcrypto_key_decrypted))
