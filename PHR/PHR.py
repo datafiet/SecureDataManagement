@@ -2,10 +2,13 @@
 
 Usage:
     PHR.py
+    PHR.py init
     PHR.py read <record> -l <user> -k <key>
     PHR.py insert <data> -l <user> -k <key>
     PHR.py insert <data> -r <record> -l <user> -k <key>
     PHR.py allow-access <to-user> -t <type> -l <user> -k <key>
+    PHR.py new patient <user> <gender> <date-of-birth> <patient-address>
+    PHR.py new patient <user> <gender> <date-of-birth> <patient-address> <other>
     PHR.py -l <user> -k <key>
     PHR.py -h|--help
     PHR.py -v|--version
@@ -19,57 +22,85 @@ Options:
 """
 import sys
 from docopt import docopt
+from database import Database
+db = Database()
 
-def say_hello(name):
-    return("Hello {}!".format(name))
+def init():
+    """ Initializes the database """
+    db.initialize()
+
+def new_user(user,gender,date_of_birth,address,other):
+    """
+    Create a new user, creates a Public Health Record and a key.
+    :param user:    The new user to be created
+    """
+    key = "/path/to/key"
+    patient = [gender,date_of_birth,user,address,other]
+    patient
+    print("Inserted new user in database at row {}".format(db.create_patient(patient)))
+    print("MOCK | new user \'{}\' created, key location: {}".format(user,key))
     
-# Logs a user into the system if the correct credentials are provided.
-#   user  User that wants to login
 def login(user):
+    """
+    Logs a user into the system if the correct credentials are provided.
+    :param user:  User that wants to login
+    """
     if arguments['-k'] or arguments['--key']:
         key = arguments['<key>']
         # TODO: exit program if wrong key is provided
         authenticate(user,key)
-        print("{} logged in with key {}".format(user,key))
+        print("MOCK | {} logged in with key {}".format(user,key))
     else:
         sys.exit("Please provide a key with the \'-k\' or \'--key\' option for authentication.")
 
-# Authenticates a user, when authentication fails, the program should not continue.
-#   user  User that needs to be authenticated
-#   key   Key of the user
 def authenticate(user,key):
-    print("{} is authenticated".format(user))
+    """
+    Authenticates a user, when authentication fails, the program should not continue.
+    :param user:  User that needs to be authenticated
+    :param key:   Key of the user
+    """
+    print("MOCK | {} is authenticated".format(user))
 
-# Function to read some public health record, this can only succeed if the user is allowed to read this. Returns all parts of the record that can be read.
-#   user      User that wants to read the health record
-#   key       Key of the user, used for decrypting the public health record
-#   record    Public health record to be read
 def read(user,key,record):
+    """
+    Function to read some public health record, this can only succeed if the user is allowed to read this. Returns all parts of the record that can be read.
+    :param user:      User that wants to read the health record
+    :param key:       Key of the user, used for decrypting the public health record
+    :param record:    Public health record to be read
+    """
 #    recordfile = get_record(record)
 #    decrypt(recordfile,key)
-    print("Data is read from record \'{}\' by \'{}\'".format(record,user))
+    print("MOCK | Data is read from record \'{}\' by \'{}\'".format(record,user))
 
-# Insert data into a public health record.
-#   user    User that wants to insert data
-#   key     Key of the user
-#   data    Data to be inserted
-#   record  Public health record in which data is inserted, default: own record
 def insert(user,key,data,record):
+    """
+    Insert data into a public health record.
+    :param user:    User that wants to insert data
+    :param key:     Key of the user
+    :param data:    Data to be inserted
+    :param record:  Public health record in which data is inserted, default: own record
+    """
     if record == None:
         record = user
-    print("Data is inserted into record \'{}\' by \'{}\'".format(record,user))
-    print("Data inserted:\n{}".format(data))
+    print("MOCK | Data is inserted into record \'{}\' by \'{}\'".format(record,user))
+    print("MOCK | Data inserted:\n{}".format(data))
     
-# Allow another user read access to own public health record.
-#   user        Owner of the public health record
-#   key         Key of user
-#   to_user     User that will get read access
-#   data_type   Type of data that to_user will have access to
 def allow_access(user,key,to_user,data_type):
-    print("{} has provided {} with read access to their Public Health Record".format(user,to_user))
+    """
+    Allow another user read access to own public health record.
+    :param user:        Owner of the public health record
+    :param key:         Key of user
+    :param to_user:     User that will get read access
+    :param data_type:   Type of data that to_user will have access to
+    """
+    print("MOCK | {} has provided {} with read access to their Public Health Record".format(user,to_user))
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1')
+    if arguments['init']:
+        init()
+    if arguments['new'] and arguments['patient']:
+        new_user(arguments['<user>'],arguments['<gender>'],arguments['<date-of-birth>'],arguments['<patient-address>'],arguments['<other>'])
     if arguments['-l'] or arguments['--login']:
         login(arguments['<user>'])
         if arguments['read']:
@@ -80,5 +111,6 @@ if __name__ == '__main__':
             allow_access(arguments['<user>'],arguments['<key>'],arguments['<to-user>'],arguments['<type>'])
     else:
         print("Please provide login details.")
+    db.exit() # close database connection
         
         
