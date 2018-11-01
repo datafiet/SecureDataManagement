@@ -3,6 +3,8 @@
 Usage:
     PHR.py
     PHR.py init
+    PHR.py kgc generate masterkey
+    PHR.py kgc generate userkey <user_id>
     PHR.py read <record> -l <user> -k <key>
     PHR.py insert <data> -l <user> -k <key>
     PHR.py insert <data> -r <record> -l <user> -k <key>
@@ -21,10 +23,36 @@ Options:
     -t<type> --type=<type>          Specify type of data.
 """
 import sys
+
+from charm.toolbox.pairinggroup import PairingGroup
 from docopt import docopt
 from database import Database
+from type_id_proxy_reencryption import TIPRE
+from pathlib import Path
+import pairing_pickle
 
 db = Database()
+
+kgc_path = Path('keys/kgc')
+
+group = PairingGroup('SS512', secparam=1024)
+pre = TIPRE(group)
+
+
+def kgc_generate_master():
+    master_secret_key, params = pre.setup()
+
+    with (kgc_path / 'master_key').open(mode='wb') as f:
+        pairing_pickle.dump(group, master_secret_key, f)
+    with (kgc_path / 'params').open(mode='wb') as f:
+        pairing_pickle.dump(group, params, f)
+
+
+def kgc_generate_user(user_id: str):
+    with (kgc_path / 'master_key').open(mode='rb') as f:
+        master_key = pairing_pickle.load(group, f)
+    with (kgc_path / 'user_id_{}'.format(user_id)).open(mode='wb') as f:
+        pairing_pickle.dump(group, pre.keyGen(master_key, user_id), f)
 
 
 def init():
@@ -107,12 +135,16 @@ def allow_access(user, key, to_user, data_type):
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1')
-    if arguments['init']:
+    if arguments['kgc'] and arguments['masterkey']:
+        kgc_generate_master()
+    elif arguments['kgc'] and arguments['userkey'] and arguments['<user_id>']:
+        kgc_generate_user(arguments['<user_id>'])
+    elif arguments['init']:
         init()
-    if arguments['new'] and arguments['patient']:
+    elif arguments['new'] and arguments['patient']:
         new_user(arguments['<user>'], arguments['<gender>'], arguments['<date-of-birth>'],
                  arguments['<patient-address>'], arguments['<other>'])
-    if arguments['-l'] or arguments['--login']:
+    elif arguments['-l'] or arguments['--login']:
         login(arguments['<user>'])
         if arguments['read']:
             read(arguments['<user>'], arguments['<key>'], arguments['<record>'])
@@ -122,4 +154,7 @@ if __name__ == '__main__':
             allow_access(arguments['<user>'], arguments['<key>'], arguments['<to-user>'], arguments['<type>'])
     else:
         print("Please provide login details.")
-    db.exit()  # close database connection
+    try:
+        db.exit()  # close database connection
+    except AttributeError:
+        pass

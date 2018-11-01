@@ -26,7 +26,7 @@ from charm.adapters.pkenc_adapt_hybrid import HybridEnc
 debug = False
 
 
-class PreGA:
+class TIPRE:
 
     def __init__(self, groupObj, pkencObj=None):
         global group, h, pkenc
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 
     group = PairingGroup('SS512', secparam=1024)
-    pre = PreGA(group)
+    pre = TIPRE(group)
     ID1 = "Alice"
     ID2 = "Bob"
     msg = b'Message to encrypt'
