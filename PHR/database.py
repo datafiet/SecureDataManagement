@@ -53,6 +53,7 @@ create_table_healthclub = """ CREATE TABLE IF NOT EXISTS healthclub (
                                     healthclub_name TEXT NOT NULL
                                 ); """
 
+
 class Database:
     """Class for all database related methods"""
     conn = None
@@ -67,7 +68,7 @@ class Database:
         except Error as e:
             print("Error, couldn't create database connection. {}".format(e))
         return None
-            
+
     def initialize(self):
         conn = self.create_connection()
         if conn is not None:
@@ -79,8 +80,8 @@ class Database:
             self.create_table(conn, create_table_patient_record_healthclub)
         else:
             print("Error, couldn't create database connection.")
-    
-    def create_table(self,conn, sql):
+
+    def create_table(self, conn, sql):
         """
         Creates a table for the connected database.
         :param conn:    Connection to the database
@@ -91,11 +92,11 @@ class Database:
             c.execute(sql)
         except Error as e:
             print(e)
-    
+
     def read(self):
         """ Reads data from the database. """
         return "read data"
-        
+
     def create_patient(self, patient):
         """ 
         Creates a new patient in the database
@@ -109,10 +110,10 @@ class Database:
                     date_of_birth,patient_name,patient_address,other)
                     VALUES(?,?,?,?,?) '''
         cur = conn.cursor()
-        cur.execute(sql,patient)
+        cur.execute(sql, patient)
         conn.commit()
         return cur.lastrowid
-        
+
     def create_hospital(self, hospital):
         """ 
         Creates a new hospital in the database
@@ -126,10 +127,10 @@ class Database:
                     hospital_name)
                     VALUES(?,?) '''
         cur = conn.cursor()
-        cur.execute(sql,hospital)
+        cur.execute(sql, hospital)
         conn.commit()
         return cur.lastrowid
-        
+
     def create_healthclub(self, healthclub):
         """ 
         Creates a new healthclub in the database
@@ -143,10 +144,10 @@ class Database:
                     healthclub_name)
                     VALUES(?,?) '''
         cur = conn.cursor()
-        cur.execute(sql,healthclub)
+        cur.execute(sql, healthclub)
         conn.commit()
         return cur.lastrowid
-        
+
     def create_patient_record(self, record, record_table="patient_record"):
         """ 
         Creates a new patient record in the database
@@ -161,26 +162,26 @@ class Database:
                     hospital_id,healthclub_id,updated_date,data)
                     VALUES(?,?,?,?,?) '''
         cur = conn.cursor()
-        cur.execute(sql,record)
+        cur.execute(sql, record)
         conn.commit()
         return cur.lastrowid
-        
+
     def create_patient_record_hospital(self, record):
         """ Creates a new hospital patient record """
-        return self.create_patient_record(record,"patient_record_hospital")
-        
+        return self.create_patient_record(record, "patient_record_hospital")
+
     def create_patient_record_healthclub(self, record):
         """ Creates a new healthclub patient record """
-        return self.create_patient_record(record,"patient_record_healthclub")        
-        
-    def get_patient_record(self,record_table,patient_id=None,hospital_id=None,healthclub_id=None):
+        return self.create_patient_record(record, "patient_record_healthclub")
+
+    def get_patient_record(self, record_table, patient_id=None, hospital_id=None, healthclub_id=None):
         """
         Fetches a patient record from one of the three possible databases
         :param record_table:    The table from which to fetch the data, either "patient_record","patient_record_hospital", or "patient_record_healthclub"
         :param patient_id:      patient_id associated with the record
         :param hospital_id:     hospital_id associated with the record
         :param healthclub_id:   healthclub_id associated with the record
-        """ 
+        """
         conn = self.create_connection()
         if conn is None:
             return
@@ -190,12 +191,12 @@ class Database:
         if hospital_id is not None:
             sql += ''' hospital_id = ''' + str(hospital_id) + ''' AND '''
         if healthclub_id is not None:
-            sql += ''' healthclub_id = ''' + str(healthclub_id) +''' AND '''
+            sql += ''' healthclub_id = ''' + str(healthclub_id) + ''' AND '''
         sql = sql[:-4]
         cur = conn.cursor()
         cur.execute(sql)
         return cur.fetchall()
-        
+
     def execute(self, sql):
         """
         Execute a custom build sql command for this database.
@@ -209,9 +210,8 @@ class Database:
         cur.execute(sql)
         conn.commit()
         return cur.fetchall()
-        
+
     def exit(self):
         """ Closes the database connection. """
         self.conn.close()
         self.conn = None
-
