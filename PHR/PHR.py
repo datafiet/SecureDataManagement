@@ -84,44 +84,46 @@ def load_user_key(user):
 
 def read(user, record):
     """
-    Function to read some public health record, this can only succeed if the user is allowed to read this. Returns
-    all parts of the record that can be read.
+    Function to read some public health record, from a given user. Returns
+    all parts of the record.
 
     :param user:      User public key that wants to read the health record
     :param record:    Public health record to be read
     """
 
-    # Get the record from database
+    # Get the record from the file system and load the key
     data = data_helper.load(user, record)
     user_key = load_user_key(user)
 
-    # Decrypt the symmetric key from the database
+    # Decrypt the symmetric key using the TIPRE key
     sym_crypto_key = pre.decrypt(get_params(), user_key, data[SYMKEY()])
 
     # Setup symmetric crypto
     sym_crypto = SymmetricCryptoAbstraction(extract_key(sym_crypto_key))
 
-    # Attempt to decrypt all columns
+    # Attempt to decrypt all columns and return
     decrypted_record = {k: sym_crypto.decrypt(v) for k,v in data.items() if k != SYMKEY() }
-
     return decrypted_record
     
-
 
 def insert(user, data, record, type_attribute):
     """
     Insert data into a public health record.
 
-    :param user:    User that wants to insert data
-    :param data:    Data to be inserted
-    :param record:  Public health record in which data is inserted, default: own record
+    :param user:            User that wants to insert data
+    :param data:            Data to be inserted
+    :param record:          Public health record in which data is inserted.
+    :param type_attribute:  The type for this record
+
     """
+
+    # Check if some arguments are correct
     if record == None:
         sys.exit("Please provide the record")
     if SYMKEY() in data:
         sys.exit("Data contains the key {}, please use a different key".format(SYMKEY()))
 
-    # Get the users key
+    # Load the users key
     user_key = load_user_key(user)
 
     # Create new symmetric key
@@ -145,22 +147,39 @@ def allow_access(user, to_user, type_attribute):
     """
     Allow another user read access to own public health record. Ran by delegater.
 
-    :param user:        Owner of the public health record
-    :param to_user:     Public key of the user that will get read access
+    :param user:             Owner of the public health record
+    :param to_user:          Public key of the user that will get read access
     :param type_attribute:   Type of data that to_user will have access to
     """
+
+    # Load the users key and create a reencryption key for to_user
     key = load_user_key(user)
     re_encryption_key = pre.rkGen(get_params(), key, to_user, type_attribute)
 
+    # Store the reencryption key for the proxy
     with (reencryption_path / 'from_{}_to_{}_type_{}'.format(user, to_user, type_attribute)).open(mode='wb') as f:
         pairing_pickle.dump(group, re_encryption_key, f)
 
     print("{} has provided {} with read access to their Public Health Record".format(user, to_user))
 
 def insert_with_proxy(from_user, to_user, data, record, type_attribute):
+    """
+    Insert data in from_user record and give to_user access as well, by
+    calling the proxy to reencrypt the created ciphertext.
+
+    :param from_user:       The user where the ciphertext is from
+    :param to_user:         The user for which the reencrypted ciphertext is
+    :param data:            The data to be inserted/encrypted
+    :param record:          The name of this record
+    :param type_attribute   The type
+
+    """
+
+    # Insert in own record and create reencryption key for the proxy
     insert(from_user, data, record, type_attribute)
     allow_access(from_user, to_user, type_attribute)
 
+    # Call the proxy to reencrypt the just created ciphertext
     arguments = "python3 proxy.py reencrypt {} {} -r {} -t {}".format(
         from_user,
         to_user,
@@ -170,6 +189,11 @@ def insert_with_proxy(from_user, to_user, data, record, type_attribute):
 
 
 def select_file(user):
+    """
+    Let the user select a file in its own records.
+
+    :param user: The user
+    """
     files = data_helper.get_data_files(user)
     for idx, val in enumerate(files):
         print("{}. {}".format(idx, val)) 
