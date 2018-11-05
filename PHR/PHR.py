@@ -11,7 +11,6 @@ Usage:
     PHR.py allow-access <to-user> -t <type> -l <user> 
     PHR.py new patient <user> <gender> <date-of-birth> <patient-address> -t <type_attribute>
     PHR.py new patient <user> <gender> <date-of-birth> <patient-address> <other>
-    PHR.py reencrypt <to-user> -l <user> -r <record> -t <type> 
     PHR.py -l <user> 
     PHR.py -h|--help
     PHR.py -v|--version
@@ -54,6 +53,10 @@ group = PairingGroup('SS512', secparam=1024)
 pre = TIPRE(group)
 data_helper = DataHelper(group)
 
+def SYMKEY(): return "enc_sym_key"
+def USER(user): return "user_{}".format(user)
+def HOSPITAL(hospital): return "hospital_{}".format(hospital)
+
 
 def kgc_generate_master():
     master_secret_key, params = pre.setup()
@@ -68,7 +71,7 @@ def kgc_generate_user(user_id: str):
     #TODO: check if user already exists
     with (kgc_path / 'master_key').open(mode='rb') as f:
         master_key = pairing_pickle.load(group, f)
-    with (kgc_path / 'user_id_{}'.format(user_id)).open(mode='wb') as f:
+    with (kgc_path / '{}'.format(user_id)).open(mode='wb') as f:
         pairing_pickle.dump(group, pre.keyGen(master_key, user_id), f)
 
 
@@ -82,129 +85,81 @@ def init():
     db.initialize()
 
 
-def new_patient(user_id, gender, date, address):
+
+
+
+
+def load_user_key(user):
+    with (kgc_path / user).open(mode='rb') as f:
+        user_key = pairing_pickle.load(group, f)
+    return user_key
+
+
+
+def read(user, record):
     """
-    Create a new user, creates a Public Health Record and a key.
+    Function to read some public health record, this can only succeed if the user is allowed to read this. Returns
+    all parts of the record that can be read.
 
-    :param user_id: The user public key the, who creates the record
+    :param user:      User public key that wants to read the health record
+    :param record:    Public health record to be read
     """
 
-    #Set the attribute
-    type_attribute = "patient"
+    # Get the record from database
+    data = data_helper.load(user, record)
+    user_key = load_user_key(user)
 
-    # Load secret user key
-    user_key = load_user_key(user_id)
+    # Decrypt the symmetric key from the database
+    sym_crypto_key = pre.decrypt(get_params(), user_key, data[SYMKEY()])
+
+    # Setup symmetric crypto
+    sym_crypto = SymmetricCryptoAbstraction(extract_key(sym_crypto_key))
+
+    # Attempt to decrypt all columns
+    decrypted_record = {k: sym_crypto.decrypt(v) for k,v in data.items() if k != SYMKEY() }
+
+    return decrypted_record
+    
+
+
+def insert(user, data, record, type_attribute):
+    """
+    Insert data into a public health record.
+
+    :param user:    User that wants to insert data
+    :param data:    Data to be inserted
+    :param record:  Public health record in which data is inserted, default: own record
+    """
+    if record == None:
+        sys.exit("Please provide the record")
+    if SYMKEY() in data:
+        sys.exit("Data contains the key {}, please use a different key".format(SYMKEY()))
+
+    # Get the users key
+    user_key = load_user_key(user)
 
     # Create new symmetric key
     sym_crypto_key = group.random(GT)
     sym_crypto = SymmetricCryptoAbstraction(extract_key(sym_crypto_key))
     # Encrypt symmetric key with TIPRE
     # and the data using the symmetric key
-    encrypted_sym_key = pre.encrypt(get_params(), user_id, sym_crypto_key, user_key, type_attribute)
-    p = {'enc_sym_key': encrypted_sym_key,
-        'gender': sym_crypto.encrypt(gender),
-        'date_of_birth': sym_crypto.encrypt(date),
-        'address': sym_crypto.encrypt(address)
-        }
-
+    encrypted_sym_key = pre.encrypt(get_params(), user, sym_crypto_key, user_key, type_attribute)
+    encrypted_data = {k: sym_crypto.encrypt(v) for k,v in data.items()}
+    encrypted_data[SYMKEY()] =  encrypted_sym_key
+    
     #Store the data
-    data_helper.save(user_id, type_attribute, p , "test")
+    data_helper.save(user, type_attribute, encrypted_data, record)
 
-    #print("Inserted new user in database at row {}".format(db.create_patient(patient)))
-    print("MOCK | new user \'{}\' created".format(user_id))
-
-
-def login(user):
-    """
-    Logs a user into the system if the correct credentials are provided.
-
-    :param user:  User that wants to login
-    """
-    if arguments['-k'] or arguments['--key']:
-        key = arguments['<key>']
-        # TODO: exit program if wrong key is provided
-        authenticate(user, key)
-        print("MOCK | {} logged in with key {}".format(user, key))
-    else:
-        sys.exit("Please provide a key with the \'-k\' or \'--key\' option for authentication.")
-
-
-def authenticate(user, key):
-    """
-    Authenticates a user, when authentication fails, the program should not continue.
-    :param user:  User that needs to be authenticated
-    :param key:   Key of the user
-    """
-    print("MOCK | {} is authenticated".format(user))
-
-def load_user_key(user):
-    with (kgc_path / 'user_id_{}'.format(user)).open(mode='rb') as f:
-        user_key = pairing_pickle.load(group, f)
-    return user_key
+    print("Data is inserted into record \'{}\' by \'{}\'".format(record, user))
+    print("Data inserted:\n{}".format(data))
 
 
 
-def read(user, key, record):
-    """
-    Function to read some public health record, this can only succeed if the user is allowed to read this. Returns
-    all parts of the record that can be read.
-
-    :param user:      User public key that wants to read the health record
-    :param key:       Key of the user, used for decrypting the public health record
-    :param record:    Public health record to be read
-    """
-
-    # Get the record from database
-    d = data_helper.load(user, record)
-    user_key = load_user_key(user)
-
-    # Decrypt the symmetric key from the database
-    sym_crypto_key = pre.decrypt(get_params(), user_key, d['enc_sym_key'])
-
-    # Setup symmetric crypto
-    sym_crypto = SymmetricCryptoAbstraction(extract_key(sym_crypto_key))
-
-    # Attempt to decrypt all columns
-    decrypted_record = [sym_crypto.decrypt(x) for x in [d['gender'], d['date_of_birth']]]  # more
-
-    print("MOCK | Data is read from record \'{}\' by \'{}\'".format(decrypted_record, user))
-
-
-def insert(user, key, data, record, type_attribute):
-    """
-    Insert data into a public health record.
-
-    :param user:    User that wants to insert data
-    :param key:     Key of the user
-    :param data:    Data to be inserted
-    :param record:  Public health record in which data is inserted, default: own record
-    """
-    if record == None:
-        record = user
-
-    print("MOCK | Data is inserted into record \'{}\' by \'{}\'".format(record, user))
-    print("MOCK | Data inserted:\n{}".format(data))
-
-def reEncrypt(user, to_user, record, type_attribute):
-
-    ciphertext = data_helper.load(user, record)
-    # Retrieve the reencryption key
-    with (reencryption_path / 'from_{}_to_{}_type_{}'.format(user, to_user, type_attribute)).open(mode='rb') as f:
-        re_encryption_key = pairing_pickle.load(group, f)   
-
-    # Reencrypt the data
-    cipher = pre.reEncrypt(get_params(), re_encryption_key, ciphertext['enc_sym_key'])
-    ciphertext['enc_sym_key'] = cipher
-    data_helper.save(to_user, type_attribute, ciphertext, "reencryption_from_{}_{}".format(to_user, record))
-    return cipher
-
-
-def allow_access(user, key, to_user, type_attribute):
+def allow_access(user, to_user, type_attribute):
     """
     Allow another user read access to own public health record. Ran by delegater.
 
     :param user:        Owner of the public health record
-    :param key:         Key of user
     :param to_user:     Public key of the user that will get read access
     :param type_attribute:   Type of data that to_user will have access to
     """
@@ -214,15 +169,15 @@ def allow_access(user, key, to_user, type_attribute):
     with (reencryption_path / 'from_{}_to_{}_type_{}'.format(user, to_user, type_attribute)).open(mode='wb') as f:
         pairing_pickle.dump(group, re_encryption_key, f)
 
-    print("MOCK | {} has provided {} with read access to their Public Health Record".format(user, to_user))
+    print("{} has provided {} with read access to their Public Health Record".format(user, to_user))
 
 def new_hospital(name):
     kgc_generate_user(user)
     print("Created new hospital {}".format(name))
 
-def new_patient(hospital, patient):
+# def new_patient(hospital, patient):
     # Use patient as type
-    allow_access(hospital, None, patient, patient)
+    # allow_access(hospital, None, patient, patient)
 
 def insert_patient_data(hospital, patient, file_name, data):
     hospital_key = load_user_key(hospital)
@@ -255,15 +210,13 @@ if __name__ == '__main__':
         new_patient(arguments['<user>'], arguments['<gender>'], arguments['<date-of-birth>'],
                  arguments['<patient-address>'])
     elif arguments['-l'] or arguments['--login']:
-        login(arguments['<user>'])
+        # login(arguments['<user>'])
         if arguments['read']:
-            read(arguments['<user>'], arguments['<key>'], arguments['<record>'])
+            read(arguments['<user>'], arguments['<record>'])
         if arguments['insert']:
-            insert(arguments['<user>'], arguments['<key>'], arguments['<data>'], arguments['<record>'])
+            insert(arguments['<user>'],  arguments['<data>'], arguments['<record>'])
         if arguments['allow-access']:
-            allow_access(arguments['<user>'], arguments['<key>'], arguments['<to-user>'], arguments['<type>'])
-        if arguments['reencrypt']:
-            reEncrypt(arguments['<user>'], arguments['<to-user>'], arguments['<record>'], arguments['<type>'])       
+            allow_access(arguments['<user>'], arguments['<to-user>'], arguments['<type>'])
 
     else:
         print("Please provide login details.")
