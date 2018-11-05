@@ -4,6 +4,9 @@ import jsonpickle
 import pairing_pickle
 
 from pathlib import Path
+from os import listdir
+from os.path import isfile, join
+
 
 class DataHelper:
 
@@ -33,6 +36,14 @@ class DataHelper:
 		with open(path, 'r') as infile:
 			data = pairing_pickle.load2(self.group, infile.read())
 		return data
+
+	def get_data_files(self, user):
+		path = "{}/{}/".format(self.data_path, user)
+		files = [f[:-5] for f in listdir(path) if isfile(join(path, f))]
+		return files
+    
+
+
 
 
 

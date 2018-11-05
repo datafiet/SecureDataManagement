@@ -59,7 +59,7 @@ def reEncrypt(user, to_user, record, type_attribute):
     # Reencrypt the data
     cipher = pre.reEncrypt(get_params(), re_encryption_key, ciphertext[PHR.SYMKEY()])
     ciphertext[PHR.SYMKEY()] = cipher
-    data_helper.save(to_user, type_attribute, ciphertext, "reencryption_from_{}_{}".format(to_user, record))
+    data_helper.save(to_user, type_attribute, ciphertext, "reencryption_from_{}_{}".format(user, record))
     return cipher
 
 

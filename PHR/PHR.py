@@ -2,16 +2,8 @@
 
 Usage:
     PHR.py
-    PHR.py init
     PHR.py kgc generate masterkey
     PHR.py kgc generate userkey <user_id>
-    PHR.py read <record> -l <user> 
-    PHR.py insert <data> -l <user> 
-    PHR.py insert <data> -r <record> -l <user> 
-    PHR.py allow-access <to-user> -t <type> -l <user> 
-    PHR.py new patient <user> <gender> <date-of-birth> <patient-address> -t <type_attribute>
-    PHR.py new patient <user> <gender> <date-of-birth> <patient-address> <other>
-    PHR.py -l <user> 
     PHR.py -h|--help
     PHR.py -v|--version
 Options:
@@ -34,8 +26,10 @@ from database import Database
 from docopt import docopt
 from type_id_proxy_reencryption import TIPRE
 from json_helper import DataHelper
+from subprocess import call
 
-db = Database()
+
+
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -56,6 +50,7 @@ data_helper = DataHelper(group)
 def SYMKEY(): return "enc_sym_key"
 def USER(user): return "user_{}".format(user)
 def HOSPITAL(hospital): return "hospital_{}".format(hospital)
+def HEALTHCLUB(healthclub): return "healthclub_{}".format(healthclub)
 
 
 def kgc_generate_master():
@@ -78,15 +73,6 @@ def kgc_generate_user(user_id: str):
 def get_params():
     with (kgc_path / 'params').open(mode='rb') as f:
         return pairing_pickle.load(group, f)
-
-
-def init():
-    """ Initializes the database """
-    db.initialize()
-
-
-
-
 
 
 def load_user_key(user):
@@ -171,31 +157,29 @@ def allow_access(user, to_user, type_attribute):
 
     print("{} has provided {} with read access to their Public Health Record".format(user, to_user))
 
-def new_hospital(name):
-    kgc_generate_user(user)
-    print("Created new hospital {}".format(name))
+def insert_with_proxy(from_user, to_user, data, record, type_attribute):
+    insert(from_user, data, record, type_attribute)
+    allow_access(from_user, to_user, type_attribute)
 
-# def new_patient(hospital, patient):
-    # Use patient as type
-    # allow_access(hospital, None, patient, patient)
+    arguments = "python3 proxy.py reencrypt {} {} -r {} -t {}".format(
+        from_user,
+        to_user,
+        record, type_attribute)
+    call(arguments.split(' '))
 
-def insert_patient_data(hospital, patient, file_name, data):
-    hospital_key = load_user_key(hospital)
-    # Create new symmetric key
-    sym_crypto_key = group.random(GT)
-    sym_crypto = SymmetricCryptoAbstraction(extract_key(sym_crypto_key))
-    # Encrypt symmetric key with TIPRE
-    # and the data using the symmetric key
-    encrypted_sym_key = pre.encrypt(get_params(), user_id, sym_crypto_key, user_key, type_attribute)
-    p = {'enc_sym_key': encrypted_sym_key,
-        'data': sym_crypto.encrypt(data),
-        }
-    #Store the data
-    data_helper.save(user_id, type_attribute, p , "{}".format(file_name))
 
-    #Reencrypt the data
-    reEncrypt(hospital, patient, file_name, patient)
-    
+
+def select_file(user):
+    files = data_helper.get_data_files(user)
+    for idx, val in enumerate(files):
+        print("{}. {}".format(idx, val)) 
+    n = int(input("Choose the number of the file you want to read\n"))
+    if( n< 0 or n >= len(files)):
+        sys.exit("Please enter a correct number")
+    print("\nSelected file {}\n".format(files[n]))
+    return read(user, files[n])
+
+
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1')
@@ -203,24 +187,3 @@ if __name__ == '__main__':
         kgc_generate_master()
     elif arguments['kgc'] and arguments['userkey'] and arguments['<user_id>']:
         kgc_generate_user(arguments['<user_id>'])
-    elif arguments['init']:
-        init()
-    elif arguments['new'] and arguments['patient']:
-        kgc_generate_user(arguments['<user>'])
-        new_patient(arguments['<user>'], arguments['<gender>'], arguments['<date-of-birth>'],
-                 arguments['<patient-address>'])
-    elif arguments['-l'] or arguments['--login']:
-        # login(arguments['<user>'])
-        if arguments['read']:
-            read(arguments['<user>'], arguments['<record>'])
-        if arguments['insert']:
-            insert(arguments['<user>'],  arguments['<data>'], arguments['<record>'])
-        if arguments['allow-access']:
-            allow_access(arguments['<user>'], arguments['<to-user>'], arguments['<type>'])
-
-    else:
-        print("Please provide login details.")
-    try:
-        db.exit()  # close database connection
-    except AttributeError:
-        pass
