@@ -22,7 +22,7 @@ from charm.core.math.pairing import GT
 from charm.toolbox.pairinggroup import PairingGroup, extract_key
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
 from docopt import docopt
-from json_helper import DataHelper
+from json_helper import DataHelper, RecordAlreadyExists
 from type_id_proxy_reencryption import TIPRE
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -140,10 +140,12 @@ def insert(user, data, record, type_attribute):
     encrypted_data[SYMKEY()] = encrypted_sym_key
 
     # Store the data
-    data_helper.save(user, type_attribute, encrypted_data, record)
-
-    print("Data is inserted into record \'{}\' by \'{}\'".format(record, user))
-    print("Data inserted:\n{}".format(data))
+    try:
+        data_helper.save(user, type_attribute, encrypted_data, record)
+        print("Data is inserted into record \'{}\' by \'{}\'".format(record, user))
+        print("Data to insert into record:\n{}".format(data))
+    except RecordAlreadyExists as e:
+        print(e)
 
 
 def allow_access(user, to_user, type_attribute):

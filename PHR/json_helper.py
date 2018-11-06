@@ -6,6 +6,11 @@ from pathlib import Path
 import pairing_pickle
 
 
+class RecordAlreadyExists(Exception):
+    def __init__(self, message):
+        self.message = message
+
+
 class DataHelper:
 
     def __init__(self, group):
@@ -22,9 +27,13 @@ class DataHelper:
 
     def save(self, user, type_attribute, data, file_name):
         self.create_folder('{}{}'.format(self.data_path, user))
-        path = '{}{}/{}'.format(self.data_path, user, '{}.json'.format(file_name))
-        with open(path, 'w') as outfile:
-            outfile.write(pairing_pickle.dump2(self.group, data))
+        path = Path('{}{}/{}'.format(self.data_path, user, '{}.json'.format(file_name)))
+
+        if path.exists():
+            raise RecordAlreadyExists('Record with this name already exists, choose a different name')
+        else:
+            with open(path, 'w') as outfile:
+                outfile.write(pairing_pickle.dump2(self.group, data))
 
     def load(self, user, file_name):
         self.create_folder('{}{}'.format(self.data_path, user))
