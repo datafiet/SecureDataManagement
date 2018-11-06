@@ -64,11 +64,14 @@ def kgc_generate_master():
 
 
 def kgc_generate_user(user_id: str):
-    # TODO: check if user already exists
     with (kgc_path / 'master_key').open(mode='rb') as f:
         master_key = pairing_pickle.load(group, f)
-    with (kgc_path / '{}'.format(user_id)).open(mode='wb') as f:
-        pairing_pickle.dump(group, pre.keyGen(master_key, user_id), f)
+
+    if (kgc_path / '{}'.format(user_id)).exists():
+        print('User with this id is already registered in this KGC')
+    else:
+        with (kgc_path / '{}'.format(user_id)).open(mode='wb') as f:
+            pairing_pickle.dump(group, pre.keyGen(master_key, user_id), f)
 
 
 def get_params():
@@ -119,7 +122,7 @@ def insert(user, data, record, type_attribute):
     """
 
     # Check if some arguments are correct
-    if record == None:
+    if record is None:
         sys.exit("Please provide the record")
     if SYMKEY() in data:
         sys.exit("Data contains the key {}, please use a different key".format(SYMKEY()))
@@ -198,7 +201,7 @@ def select_file(user):
     for idx, val in enumerate(files):
         print("{}. {}".format(idx, val))
     n = int(input("Choose the number of the file you want to read\n"))
-    if (n < 0 or n >= len(files)):
+    if n < 0 or n >= len(files):
         sys.exit("Please enter a correct number")
     print("\nSelected file {}\n".format(files[n]))
     return read(user, files[n])

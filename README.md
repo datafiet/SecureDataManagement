@@ -1,5 +1,8 @@
 ### Cryptographically Enforced Access Control
 
+
+### Examples
+
 #### KGC 
 
 Setup: 
@@ -22,7 +25,7 @@ foo@bar:~$ python user.py new john@email.com
 foo@bar:~$ python user.py insert "Personal health data" -u john@email.com -t req2 -r health_data
 ```
 
-### Read access for other parties than the patient
+#### Read access for parties to data written by the patient
 
 Create new insurer, who can only read the patients data
 ```console
@@ -46,7 +49,7 @@ And the insurer reads his data patients data:
 foo@bar:~$ python user.py read -u insurer_john@email.com
 ```
 
-##### Read access for the patient
+##### Read access for the patient to data written by a hospital or health club
 Create a new hospital
 
 ```console

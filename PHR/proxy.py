@@ -24,15 +24,7 @@ import PHR
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
 kgc_path = Path('{}/keys/kgc'.format(dir_path))
-try:
-    kgc_path.mkdir(parents=True)
-except:
-    pass
 reencryption_path = Path('{}/keys/reencryption'.format(dir_path))
-try:
-    reencryption_path.mkdir(parents=True)
-except:
-    pass
 group = PairingGroup('SS512', secparam=1024)
 pre = TIPRE(group)
 data_helper = DataHelper(group)
