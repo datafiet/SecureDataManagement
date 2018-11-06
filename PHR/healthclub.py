@@ -7,9 +7,6 @@ Usage:
     healtclub.py read [-z <healtclub>]
     healtclub.py insert [-d <data>] [-z <healtclub>] [-p  <patient>] [-t <type>] [-r <record>]
     healtclub.py new-patient <healtclub> <patient> -g <gender> -d <date> -a <address>
-
-
-    
 """
 from docopt import docopt
 
@@ -30,21 +27,23 @@ def new_patient(healtclub, patient, gender, date, address):
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1')
-    if arguments['read']:
-        if (arguments['<record>'] == None):
+    if arguments['read'] and arguments['<healtclub>']:
+        if arguments['<record>'] is None:
             print(PHR.select_file(PHR.HEALTHCLUB(arguments['<healtclub>'])))
         else:
             read(arguments['<healtclub>'], arguments['<record>'])
-    if arguments['insert']:
+    elif arguments['insert']:
         PHR.insert_with_proxy(
             PHR.HEALTHCLUB(arguments['<healtclub>']),
             PHR.USER(arguments['<patient>']),
             {'data': arguments['<data>']},
             'patient_{}_{}_{}'.format(arguments['<patient>'], arguments['<type>'], arguments['<record>']),
             arguments['<type>'])
-    if arguments['new']:
+    elif arguments['new']:
         print('Creating new healtclub {}'.format(arguments['<healtclub>']))
         PHR.kgc_generate_user(PHR.HEALTHCLUB(arguments['<healtclub>']))
-    if arguments['new-patient']:
+    elif arguments['new-patient']:
         new_patient(arguments['<healtclub>'], arguments['<patient>'], arguments['<gender>'], arguments['<date>'],
                     arguments['<address>'])
+    else:
+        print(__doc__)

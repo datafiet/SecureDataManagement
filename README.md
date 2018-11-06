@@ -9,7 +9,7 @@ Setup:
 ```console
 foo@bar:~$ python PHR.py kgc generate masterkey
 ```
-Creates a master key the public parameters
+Creates a master key and the public parameters
 
 
 #### Record management
@@ -19,9 +19,8 @@ Creating a new user at KGC:
 foo@bar:~$ python user.py new john@email.com
 ``` 
 
-Create a new patient and add data to its record
+Add data to the patients record
 ```console
-foo@bar:~$ python user.py new john@email.com
 foo@bar:~$ python user.py insert "Personal health data" -u john@email.com -t req2 -r health_data
 ```
 
@@ -39,7 +38,7 @@ Insurer creates his account:
 foo@bar:~$ python user.py new insurer_john@email.com
 ```
 
-Then the patient gives access to the insurer:
+Then the patient gives access to the insurer to read its record:
 ```console
 foo@bar:~$ python user.py allow-access -u john@email.com -p insurer_john@email.com -t req2 -r health_data
 ```

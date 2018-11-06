@@ -28,21 +28,23 @@ def new_patient(hospital, patient, gender, date, address):
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1')
-    if arguments['read']:
-        if (arguments['<record>'] == None):
+    if arguments['read'] and arguments['<hospital>']:
+        if arguments['<record>'] is None:
             print(PHR.select_file(PHR.HOSPITAL(arguments['<hospital>'])))
         else:
             read(arguments['<hospital>'], arguments['<record>'])
-    if arguments['insert']:
+    elif arguments['insert']:
         PHR.insert_with_proxy(
             PHR.HOSPITAL(arguments['<hospital>']),
             PHR.USER(arguments['<patient>']),
             {'data': arguments['<data>']},
             'patient_{}_{}_{}'.format(arguments['<patient>'], arguments['<type>'], arguments['<record>']),
             arguments['<type>'])
-    if arguments['new']:
+    elif arguments['new']:
         print('Creating new hospital {}'.format(arguments['<hospital>']))
         PHR.kgc_generate_user(PHR.HOSPITAL(arguments['<hospital>']))
-    if arguments['new-patient']:
+    elif arguments['new-patient']:
         new_patient(arguments['<hospital>'], arguments['<patient>'], arguments['<gender>'], arguments['<date>'],
                     arguments['<address>'])
+    else:
+        print(__doc__)

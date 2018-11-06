@@ -43,6 +43,10 @@ class DataHelper:
         return data
 
     def get_data_files(self, user):
-        path = "{}/{}/".format(self.data_path, user)
-        files = [f[:-5] for f in listdir(path) if isfile(join(path, f))]
-        return files
+        path = Path("{}/{}/".format(self.data_path, user))
+
+        if path.exists():
+            return [f[:-5] for f in listdir(path) if isfile(join(path, f))]
+        else:
+            print('No data found for this entity')
+            exit(0)

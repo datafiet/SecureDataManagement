@@ -200,6 +200,7 @@ def select_file(user):
     :param user: The user
     """
     files = data_helper.get_data_files(user)
+
     for idx, val in enumerate(files):
         print("{}. {}".format(idx, val))
     n = int(input("Choose the number of the file you want to read\n"))
@@ -215,3 +216,5 @@ if __name__ == '__main__':
         kgc_generate_master()
     elif arguments['kgc'] and arguments['userkey'] and arguments['<user_id>']:
         kgc_generate_user(arguments['<user_id>'])
+    else:
+        print(__doc__)

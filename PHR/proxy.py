@@ -51,5 +51,8 @@ def reEncrypt(user, to_user, record, type_attribute):
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1')
-    if arguments['reencrypt']:
+    if arguments['reencrypt'] and arguments['<from-user>'] and arguments['<to-user>'] and arguments['<record>'] and \
+            arguments['<type>']:
         reEncrypt(arguments['<from-user>'], arguments['<to-user>'], arguments['<record>'], arguments['<type>'])
+    else:
+        print(__doc__)

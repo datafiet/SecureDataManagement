@@ -29,7 +29,7 @@ def read(arguments):
 
 if __name__ == '__main__':
     arguments = docopt(__doc__, version='0.1')
-    if arguments['read']:
+    if arguments['read'] and arguments['<user>']:
         if arguments['<record>'] is not None:
             read(arguments)
         else:
@@ -52,3 +52,5 @@ if __name__ == '__main__':
             arguments['<type>']
         )
         call(arguments.split(' '))
+    else:
+        print(__doc__)
