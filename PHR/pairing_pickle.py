@@ -1,4 +1,5 @@
 import pickle
+
 import jsonpickle
 from charm.toolbox.pairinggroup import pc_element
 
@@ -45,17 +46,6 @@ def load(group, infile):
 
     root = pickle.load(infile)
     return _load(group, root)
-
-
-
-
-
-
-
-
-
-
-
 
 
 def _dump2(group, obj):

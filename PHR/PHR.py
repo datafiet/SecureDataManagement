@@ -3,7 +3,6 @@
 Usage:
     PHR.py
     PHR.py kgc generate masterkey
-    PHR.py kgc generate userkey <user_id>
     PHR.py -h|--help
     PHR.py -v|--version
 Options:
@@ -16,20 +15,15 @@ Options:
 import os
 import sys
 from pathlib import Path
+from subprocess import call
 
 import pairing_pickle
-import json
 from charm.core.math.pairing import GT
 from charm.toolbox.pairinggroup import PairingGroup, extract_key
 from charm.toolbox.symcrypto import SymmetricCryptoAbstraction
-from database import Database
 from docopt import docopt
-from type_id_proxy_reencryption import TIPRE
 from json_helper import DataHelper
-from subprocess import call
-
-
-
+from type_id_proxy_reencryption import TIPRE
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
@@ -47,9 +41,16 @@ group = PairingGroup('SS512', secparam=1024)
 pre = TIPRE(group)
 data_helper = DataHelper(group)
 
+
 def SYMKEY(): return "enc_sym_key"
+
+
 def USER(user): return "user_{}".format(user)
+
+
 def HOSPITAL(hospital): return "hospital_{}".format(hospital)
+
+
 def HEALTHCLUB(healthclub): return "healthclub_{}".format(healthclub)
 
 
@@ -63,7 +64,7 @@ def kgc_generate_master():
 
 
 def kgc_generate_user(user_id: str):
-    #TODO: check if user already exists
+    # TODO: check if user already exists
     with (kgc_path / 'master_key').open(mode='rb') as f:
         master_key = pairing_pickle.load(group, f)
     with (kgc_path / '{}'.format(user_id)).open(mode='wb') as f:
@@ -79,7 +80,6 @@ def load_user_key(user):
     with (kgc_path / user).open(mode='rb') as f:
         user_key = pairing_pickle.load(group, f)
     return user_key
-
 
 
 def read(user, record):
@@ -102,9 +102,9 @@ def read(user, record):
     sym_crypto = SymmetricCryptoAbstraction(extract_key(sym_crypto_key))
 
     # Attempt to decrypt all columns and return
-    decrypted_record = {k: sym_crypto.decrypt(v) for k,v in data.items() if k != SYMKEY() }
+    decrypted_record = {k: sym_crypto.decrypt(v) for k, v in data.items() if k != SYMKEY()}
     return decrypted_record
-    
+
 
 def insert(user, data, record, type_attribute):
     """
@@ -132,15 +132,14 @@ def insert(user, data, record, type_attribute):
     # Encrypt symmetric key with TIPRE
     # and the data using the symmetric key
     encrypted_sym_key = pre.encrypt(get_params(), user, sym_crypto_key, user_key, type_attribute)
-    encrypted_data = {k: sym_crypto.encrypt(v) for k,v in data.items()}
-    encrypted_data[SYMKEY()] =  encrypted_sym_key
-    
-    #Store the data
+    encrypted_data = {k: sym_crypto.encrypt(v) for k, v in data.items()}
+    encrypted_data[SYMKEY()] = encrypted_sym_key
+
+    # Store the data
     data_helper.save(user, type_attribute, encrypted_data, record)
 
     print("Data is inserted into record \'{}\' by \'{}\'".format(record, user))
     print("Data inserted:\n{}".format(data))
-
 
 
 def allow_access(user, to_user, type_attribute):
@@ -161,6 +160,7 @@ def allow_access(user, to_user, type_attribute):
         pairing_pickle.dump(group, re_encryption_key, f)
 
     print("{} has provided {} with read access to their Public Health Record".format(user, to_user))
+
 
 def insert_with_proxy(from_user, to_user, data, record, type_attribute):
     """
@@ -187,7 +187,6 @@ def insert_with_proxy(from_user, to_user, data, record, type_attribute):
     call(arguments.split(' '))
 
 
-
 def select_file(user):
     """
     Let the user select a file in its own records.
@@ -196,13 +195,12 @@ def select_file(user):
     """
     files = data_helper.get_data_files(user)
     for idx, val in enumerate(files):
-        print("{}. {}".format(idx, val)) 
+        print("{}. {}".format(idx, val))
     n = int(input("Choose the number of the file you want to read\n"))
-    if( n< 0 or n >= len(files)):
+    if (n < 0 or n >= len(files)):
         sys.exit("Please enter a correct number")
     print("\nSelected file {}\n".format(files[n]))
     return read(user, files[n])
-
 
 
 if __name__ == '__main__':
