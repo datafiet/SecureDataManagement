@@ -21,7 +21,7 @@ https://github.com/nikosft/IB-PRE/blob/master/pre_mg07a.py
 
 from charm.adapters.pkenc_adapt_hybrid import HybridEnc
 from charm.toolbox.hash_module import Hash
-from charm.toolbox.pairinggroup import ZR, G1, pair
+from charm.toolbox.pairinggroup import GT, ZR, G1, pair
 
 debug = False
 

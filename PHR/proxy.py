@@ -45,6 +45,7 @@ def get_params():
 
 def reEncrypt(user, to_user, record, type_attribute):
     ciphertext = data_helper.load(user, record)
+
     # Retrieve the reencryption key
     with (reencryption_path / 'from_{}_to_{}_type_{}'.format(user, to_user, type_attribute)).open(mode='rb') as f:
         re_encryption_key = pairing_pickle.load(group, f)

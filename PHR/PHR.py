@@ -77,6 +77,7 @@ def get_params():
 
 
 def load_user_key(user):
+    print('Loading user key: {}'.format(kgc_path / user))
     with (kgc_path / user).open(mode='rb') as f:
         user_key = pairing_pickle.load(group, f)
     return user_key

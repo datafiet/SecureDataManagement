@@ -1,7 +1,3 @@
-# Alles van een bepaald type, dus reencrypten van alle (werknemer, werkgever)
-# Docs, typefouten verbeteren
-
-
 ### Cryptographically Enforced Access Control
 
 #### KGC 
@@ -28,9 +24,27 @@ foo@bar:~$ python user.py insert "Personal health data" -u john@email.com -t req
 
 ### Read access for other parties than the patient
 
-Create new employer
-TODO create requirement 2 persons
+Create new insurer, who can only read the patients data
+```console
+foo@bar:~$ python user.py new insurer_john@email.com
+```
 
+Patient allows this insurer access to his data:
+
+Insurer creates his account:
+```console
+foo@bar:~$ python user.py new insurer_john@email.com
+```
+
+Then the patient gives access to the insurer:
+```console
+foo@bar:~$ python user.py allow-access -u john@email.com -p insurer_john@email.com -t req2 -r health_data
+```
+
+And the insurer reads his data patients data:
+```console
+foo@bar:~$ python user.py read -u insurer_john@email.com
+```
 
 ##### Read access for the patient
 Create a new hospital
